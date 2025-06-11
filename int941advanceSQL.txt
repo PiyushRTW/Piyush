@@ -1,0 +1,211 @@
+create database NishantINT191
+use NishantINT191
+
+--Advance SQL - Assessment
+--▪ Create DB with “Your Name”
+--▪ Save the file with “Your Name_ID” .sql extension
+--▪ Mention the query before executing
+
+
+
+--Create a table named Products with the following columns:
+--ProductID
+--ProductName
+--Price
+--StockQuantity
+
+
+create table Products
+(ProductID int identity(1,1),
+ProductName varchar(20),
+Price decimal(10,2),
+StockQuantity int)
+
+
+insert into Products values
+('Mobile', 30000, 10),
+('Laptop', 70000, 20),
+('Speaker', 10000, 30),
+('Charger', 500, 40),
+('Mouse', 400, 12),
+('Keyboard', 1500, 25),
+('Console', 55000, 4),
+('Printer', 12000, 6),
+('Games', 250, 19)
+
+select * from Products
+
+
+--1. Create a stored procedure that takes a ProductID as input and returns the Price of the
+--product.
+
+create procedure spGetPriceWithProductID
+@id int
+as
+begin
+	select ProductName, Price from Products where ProductID=@id
+end
+
+exec spGetPriceWithProductID 3
+
+--2. Create a stored procedure that takes a ProductID and a Quantity as input and updates
+--the StockQuantity of the product.
+
+create procedure spUpdateStockQuantityWithID
+@id int,
+@quantity int
+as
+begin
+	update Products set StockQuantity=@quantity where ProductID=@id
+end
+
+exec spUpdateStockQuantityWithID 3, 5
+select * from Products
+
+--3. Create a stored procedure that takes ProductName, Price, and StockQuantity as
+--input and inserts a new product into the Products table.
+
+create procedure spInsertNewProduct
+@name varchar(20),
+@price decimal(10,2),
+@quantity int
+as begin
+	insert into Products(ProductName, Price, StockQuantity) 
+	values(@name, @price, @quantity)
+end
+
+exec spInsertNewProduct 'Headphones', 15000, 12
+select * from Products
+
+--4. Create a stored procedure to find minimum and maximum price of the product.
+
+create procedure spFindMinMax
+as
+begin
+	select ProductName as [Product with minimum price], min(Price) as Price
+	from Products group by ProductName, Price having Price=(select min(Price) from Products)
+	select ProductName as [Product with maximum price], max(Price) as Price
+	from Products group by ProductName,Price having Price=(select max(Price) from Products)
+end
+
+exec spFindMinMax
+
+--5. Create a stored procedure that takes a Price as input and returns all products with a
+--price less than the given value.
+
+create procedure spFindProductsCheaperThan
+@price decimal
+as begin
+	select ProductName,Price from Products where Price<@price
+end
+
+exec spFindProductsCheaperThan 500
+
+--6. Create a trigger that fires after an UPDATE on the Products table. If the Price is
+--changed, insert a record into the ProductLogs table with the ProductID, OldPrice,
+--NewPrice, and current LogDate.
+
+create table ProductLogs
+(ProductID int,
+OldPrice decimal(10,2),
+NewPrice decimal(10,2),
+LogDate datetime)
+
+update Products set Price=60000 where id=8
+create trigger tr_PriceChangeLogOnUpdate
+on Products
+for Update
+as
+begin
+declare @newprice decimal(10,2), @oldprice decimal(10,2)
+select @oldprice= Products.Price from Products join inserted 
+on Products.ProductID=inserted.ProductID 
+select @newprice=Price from Inserted
+--@newprice=
+	if update(Price)
+		begin
+			if exists(select 1 from inserted join Products 
+			on inserted.ProductID=Products.ProductID where inserted.Price<> Products.Price)
+				begin 
+					insert into ProductLogs values (@oldprice, @newprice, getdate())
+				end
+		end
+end
+
+
+--7. Create a trigger that fires before an UPDATE on the Products table. If the
+--StockQuantity is being updated to a negative value, prevent the update and display a
+--message.
+
+
+create trigger tr_PreventNegativeStockQuantity
+on Products
+instead of update
+as
+begin
+	if exists(select 1 from inserted where StockQuantity<0)
+		begin
+			Print 'You cannot enter negative value in quantity'
+			return
+		end
+end
+--8. Create a trigger that fires before an INSERT on the Products table. If the StockQuantity
+--is not provided, set its default value to 0.
+
+insert into Products(ProductName, Price) values ('anoter',45000)
+select * from Products
+
+create trigger tr_SetDefaultStockQuantityInsteadofInsert
+on Products
+instead of Insert
+as
+begin
+	declare @name varchar(20), @price decimal(10,2)
+	select @name=ProductName from inserted
+	select @price=Price from inserted
+	declare @quantity int
+	select @quantity=StockQuantity from Inserted
+	if exists(select 1 from inserted where StockQuantity is null)
+		begin
+			insert into Products values (@name, @price, 0)
+		end
+end
+--9. Create a trigger that fires after an UPDATE on the Products table. If the ProductName
+--is changed, print a message stating that the product name was altered.
+
+update Products set ProductName='Smart Phone' where ProductName='Mobile'
+update Products set ProductName='Phone' where ProductName='Mobile'
+
+create trigger tr_AlertforProductNameOnUpdate
+on Products
+for update
+as 
+begin
+declare @name varchar(20)
+select @name=ProductName from Products
+	if update(ProductName)
+		begin
+			Print 'Product name '+@name+ 'was changed' 
+		end
+end
+--10.Create a trigger that fires before an UPDATE on the Products table. If the Price is being
+--increased by more than 50%, prevent the update and display a message.
+
+update Products set price=35000 where ProductID=1
+update Products set Price=800000 where ProductID=1
+select * from Products
+
+create trigger tr_CheckPriceUpdateInsteadOfUpdate
+on Products
+instead of Update
+as
+begin
+	if exists(select 1 from inserted join Products 
+	on inserted.ProductID=Products.ProductID
+	where inserted.Price>(Products.Price+(Products.Price)*0.5))
+		begin 
+			Print 'cannot update price '
+			return
+		end
+end
+
