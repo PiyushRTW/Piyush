@@ -1,0 +1,2 @@
+primary key, foreign key, unique, not null, default, check, group by, having, aggregate, operations, assignments, declarations, stored procedures, update, set, alter, modify, wild card, delete, truncate, drop, int, varchar, char, money, double, date, exec ,alias, like, alter constraints, alias, things that can be changed after table creation. set operators,ON DELETE ON UPDATE ...ALTER???cascade
+
